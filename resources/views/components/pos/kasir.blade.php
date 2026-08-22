@@ -537,7 +537,7 @@ new class extends Component {
             </div>
             @endif
 
-            {{-- QRIS: Foto Bukti Pembayaran Langsung Kamera Depan --}}
+            {{-- QRIS: Foto Bukti Pembayaran Langsung Kamera Belakang --}}
             @if($paymentMethod === 'qris')
             <div class="mb-4" x-data="{
                 stream: null,
@@ -547,7 +547,7 @@ new class extends Component {
                     this.cameraError = '';
                     try {
                         this.stream = await navigator.mediaDevices.getUserMedia({
-                            video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+                            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
                         });
                         if ($refs.video) {
                             $refs.video.srcObject = this.stream;
@@ -556,7 +556,7 @@ new class extends Component {
                         }
                     } catch (err) {
                         console.error('Camera error:', err);
-                        this.cameraError = 'Gagal mengakses kamera depan: ' + (err.message || 'Izin kamera ditolak');
+                        this.cameraError = 'Gagal mengakses kamera belakang: ' + (err.message || 'Izin kamera ditolak');
                     }
                 },
                 stopCamera() {
@@ -573,8 +573,6 @@ new class extends Component {
                     canvas.width = video.videoWidth || 640;
                     canvas.height = video.videoHeight || 480;
                     const ctx = canvas.getContext('2d');
-                    ctx.translate(canvas.width, 0);
-                    ctx.scale(-1, 1);
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
                     canvas.toBlob((blob) => {
@@ -588,7 +586,7 @@ new class extends Component {
                 }
             }" x-init="startCamera()" x-on:unmount="stopCamera()">
                 <label class="block text-xs font-semibold text-stone-500 mb-1.5 uppercase tracking-wider">
-                    Foto Bukti QRIS (Kamera Depan)
+                    Foto Bukti QRIS (Kamera Belakang)
                     <span class="text-rose-600">*</span>
                 </label>
 
@@ -598,7 +596,7 @@ new class extends Component {
                            autoplay 
                            playsinline 
                            muted 
-                           class="w-full max-h-64 object-cover -scale-x-100"></video>
+                           class="w-full max-h-64 object-cover"></video>
 
                     @if($paymentProof)
                         <div class="p-3">
@@ -606,7 +604,7 @@ new class extends Component {
                             <div class="flex gap-2 mt-3">
                                 <button type="button" @click="startCamera(); $wire.set('paymentProof', null)" class="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-1.5 rounded-lg font-semibold text-xs border border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-700 transition-all select-none active:scale-95 flex-1">
                                     <span class="material-symbols-outlined text-base">photo_camera</span>
-                                    <span>Foto Ulang (Kamera Depan)</span>
+                                    <span>Foto Ulang (Kamera Belakang)</span>
                                 </button>
                             </div>
                         </div>
@@ -614,7 +612,7 @@ new class extends Component {
                         <div x-show="cameraActive" class="p-3 flex items-center justify-center bg-white">
                             <button type="button" @click="capturePhoto()" id="btn-capture-qris" class="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-5 py-2.5 rounded-xl font-semibold text-sm cursor-pointer border-0 transition-all select-none whitespace-nowrap active:scale-[0.96] bg-amber-700 hover:bg-amber-800 text-white shadow-lg shadow-amber-700/20 w-full py-2.5 font-bold">
                                 <span class="material-symbols-outlined text-xl">photo_camera</span>
-                                <span>Ambil Foto Bukti (Kamera Depan)</span>
+                                <span>Ambil Foto Bukti (Kamera Belakang)</span>
                             </button>
                         </div>
 
@@ -622,16 +620,16 @@ new class extends Component {
                             <div x-show="cameraError" class="text-xs text-rose-600 p-2 rounded bg-rose-50 border border-rose-200 mb-2" x-text="cameraError"></div>
                             <button type="button" @click="startCamera()" class="inline-flex items-center justify-center gap-1.5 min-h-[36px] px-3.5 py-1.5 rounded-lg font-semibold text-xs border border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-700 transition-all select-none active:scale-95">
                                 <span class="material-symbols-outlined text-base">photo_camera</span>
-                                <span>Aktifkan Kamera Depan</span>
+                                <span>Aktifkan Kamera Belakang</span>
                             </button>
                             <div class="pt-2">
                                 <label for="payment-proof-upload" class="text-xs text-amber-700 underline cursor-pointer">
-                                    Atau buka kamera depan HP
+                                    Atau buka kamera HP
                                 </label>
                                 <input id="payment-proof-upload" type="file"
                                        wire:model="paymentProof"
                                        accept="image/*"
-                                       capture="user"
+                                       capture="environment"
                                        class="sr-only">
                             </div>
                         </div>
