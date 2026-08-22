@@ -25,7 +25,7 @@ class ReportPdfController extends Controller
         $totalOmset = (float) $orders->sum('total_amount');
         $totalTransaksi = $orders->count();
         $totalCups = (int) $orders->sum(fn ($order) => $order->items->sum('quantity'));
-        $totalShots = (int) $orders->sum(fn ($order) => $order->items->sum('shots_count'));
+        $totalShots = (int) $orders->sum(fn ($order) => $order->items->sum(fn ($item) => ($item->shots_count ?? 0) * $item->quantity));
         $totalCash = (float) $orders->where('payment_method', 'cash')->sum('total_amount');
         $totalQris = (float) $orders->where('payment_method', 'qris')->sum('total_amount');
 
@@ -47,6 +47,12 @@ class ReportPdfController extends Controller
 
         $filename = 'Laporan-Penjualan-'.$dateFrom.'-sd-'.$dateTo.'.pdf';
 
-        return $pdf->stream($filename);
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            'Cache-Control' => 'no-cache, no-store, max-age=0, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
     }
 }

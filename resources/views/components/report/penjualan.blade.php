@@ -48,7 +48,7 @@ new class extends Component {
     #[Computed]
     public function totalShots(): int
     {
-        return (int) $this->orders->sum(fn ($order) => $order->items->sum('shots_count'));
+        return (int) $this->orders->sum(fn ($order) => $order->items->sum(fn ($item) => ($item->shots_count ?? 0) * $item->quantity));
     }
 
     #[Computed]
@@ -93,7 +93,7 @@ new class extends Component {
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{{ route('laporan.pdf', ['date_from' => $dateFrom, 'date_to' => $dateTo, 'filter_method' => $filterMethod]) }}"
+            <a href="{{ route('laporan.pdf', ['date_from' => $dateFrom, 'date_to' => $dateTo, 'filter_method' => $filterMethod, '_t' => time()]) }}"
                target="_blank"
                id="btn-cetak-pdf"
                class="inline-flex items-center justify-center gap-1.5 min-h-[32px] px-3 py-1 rounded-lg font-semibold text-xs border border-amber-700 bg-amber-700 hover:bg-amber-800 text-white transition-all select-none active:scale-95 shadow-xs">
