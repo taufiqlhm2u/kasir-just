@@ -62,7 +62,7 @@
 
     <a href="{{ route('produk') }}"
        id="nav-produk"
-       class="flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 px-1 min-h-[60px] text-[11px] font-medium transition-colors relative no-underline {{ request()->routeIs('produk') || request()->routeIs('kategori') ? 'text-amber-700 font-semibold before:content-[""] before:absolute before:top-0 before:left-1/4 before:right-1/4 before:h-0.5 before:bg-amber-700 before:rounded-b-xs' : 'text-stone-500 hover:text-amber-700' }}"
+       class="flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 px-1 min-h-[60px] text-[11px] font-medium transition-colors relative no-underline {{ request()->routeIs('produk') || request()->routeIs('kategori') || request()->routeIs('tambahan') ? 'text-amber-700 font-semibold before:content-[""] before:absolute before:top-0 before:left-1/4 before:right-1/4 before:h-0.5 before:bg-amber-700 before:rounded-b-xs' : 'text-stone-500 hover:text-amber-700' }}"
        wire:navigate>
         <span class="material-symbols-outlined text-xl">inventory_2</span>
         <span>Produk</span>

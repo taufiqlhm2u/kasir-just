@@ -189,21 +189,26 @@
     {{-- Ringkasan Laporan --}}
     <table class="summary-box">
         <tr>
-            <td width="36%" class="card card-main">
+            <td width="28%" class="card card-main">
                 <div class="card-title">Total Penjualan</div>
                 <div class="card-value">Rp {{ number_format($totalOmset, 0, ',', '.') }}</div>
                 <div class="card-sub">{{ $totalTransaksi }} Transaksi</div>
             </td>
-            <td width="21%" class="card">
+            <td width="18%" class="card">
                 <div class="card-title">Total Cup</div>
                 <div class="card-value">{{ number_format($totalCups, 0, ',', '.') }}</div>
                 <div class="card-sub">Cup Terjual</div>
             </td>
-            <td width="21%" class="card">
+            <td width="18%" class="card">
+                <div class="card-title">Total Shot</div>
+                <div class="card-value">{{ number_format($totalShots, 0, ',', '.') }}</div>
+                <div class="card-sub">Shot Terjual</div>
+            </td>
+            <td width="18%" class="card">
                 <div class="card-title">Tunai</div>
                 <div class="card-value">Rp {{ number_format($totalCash, 0, ',', '.') }}</div>
             </td>
-            <td width="22%" class="card">
+            <td width="18%" class="card">
                 <div class="card-title">QRIS</div>
                 <div class="card-value">Rp {{ number_format($totalQris, 0, ',', '.') }}</div>
             </td>
@@ -241,7 +246,11 @@
                     <ul class="item-list">
                         @foreach($order->items as $item)
                         <li>
-                            {{ $item->product_name }} ({{ $item->quantity }}x @ Rp {{ number_format($item->price, 0, ',', '.') }})
+                            {{ $item->product_name }}
+                            @if(($item->shots_count ?? 0) > 0)
+                                <strong>(+{{ $item->shots_count }} Shot)</strong>
+                            @endif
+                            ({{ $item->quantity }}x @ Rp {{ number_format($item->price + (($item->shots_count ?? 0) * ($item->shot_price ?? 0)), 0, ',', '.') }})
                         </li>
                         @endforeach
                     </ul>

@@ -100,6 +100,13 @@ new class extends Component {
         </button>
     </header>
 
+    {{-- ===== SUB NAVIGATION ===== --}}
+    <div class="bg-stone-100 border-b border-stone-200 px-4 py-2 flex gap-2">
+        <a href="{{ route('produk') }}" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-600 hover:bg-stone-200 transition-colors">Produk</a>
+        <a href="{{ route('kategori') }}" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-700 text-white shadow-xs">Kategori</a>
+        <a href="{{ route('tambahan') }}" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-600 hover:bg-stone-200 transition-colors">Opsi Tambahan</a>
+    </div>
+
     <div class="px-4 py-4 pb-8">
         {{-- Search --}}
         <div class="relative mb-4">

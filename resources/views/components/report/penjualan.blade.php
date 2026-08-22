@@ -46,6 +46,12 @@ new class extends Component {
     }
 
     #[Computed]
+    public function totalShots(): int
+    {
+        return (int) $this->orders->sum(fn ($order) => $order->items->sum('shots_count'));
+    }
+
+    #[Computed]
     public function totalCash(): float
     {
         return (float) $this->orders->where('payment_method', 'cash')->sum('total_amount');
@@ -137,20 +143,31 @@ new class extends Component {
             <p class="text-xs mt-1 text-amber-100/90">{{ $this->totalTransaksi }} transaksi</p>
         </div>
 
-        {{-- Total Cup Terjual --}}
-        <div class="col-span-2 bg-amber-50 border border-amber-200 rounded-2xl p-3.5 flex items-center justify-between shadow-xs">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-amber-700 text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <span class="material-symbols-outlined text-xl">local_cafe</span>
+        {{-- Total Cup & Total Shot Terjual --}}
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between shadow-xs">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-amber-700 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <span class="material-symbols-outlined text-lg">local_cafe</span>
                 </div>
                 <div>
-                    <p class="text-xs font-semibold text-amber-900">Total Cup Terjual</p>
-                    <p class="text-xs text-amber-700">Jumlah cup/item terjual</p>
+                    <p class="text-xs font-semibold text-amber-900">Total Cup</p>
+                    <p class="text-[10px] text-amber-700">Cup Terjual</p>
                 </div>
             </div>
-            <div class="text-right">
-                <p class="text-2xl font-extrabold text-amber-900">{{ number_format($this->totalCups, 0, ',', '.') }} <span class="text-xs font-semibold text-amber-700">cup</span></p>
+            <p class="text-lg font-extrabold text-amber-900">{{ number_format($this->totalCups, 0, ',', '.') }}</p>
+        </div>
+
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between shadow-xs">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-amber-800 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <span class="material-symbols-outlined text-lg">coffee</span>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-amber-900">Total Shot</p>
+                    <p class="text-[10px] text-amber-700">Shot Terjual</p>
+                </div>
             </div>
+            <p class="text-lg font-extrabold text-amber-900">{{ number_format($this->totalShots, 0, ',', '.') }}</p>
         </div>
 
         {{-- Cash vs QRIS --}}
@@ -223,9 +240,14 @@ new class extends Component {
                     @foreach($order->items as $item)
                     <div class="flex justify-between text-sm py-1.5 border-b border-stone-200">
                         <div>
-                            <p class="font-medium text-stone-900">{{ $item['product_name'] ?? $item->product_name }}</p>
+                            <p class="font-medium text-stone-900">
+                                {{ $item->product_name }}
+                                @if(($item->shots_count ?? 0) > 0)
+                                    <span class="text-xs text-amber-800 font-semibold">(+{{ $item->shots_count }} Shot)</span>
+                                @endif
+                            </p>
                             <p class="text-xs text-stone-500">
-                                {{ $item->quantity }} × Rp {{ number_format($item->price, 0, ',', '.') }}
+                                {{ $item->quantity }} × Rp {{ number_format($item->price + (($item->shots_count ?? 0) * ($item->shot_price ?? 0)), 0, ',', '.') }}
                             </p>
                         </div>
                         <p class="font-semibold text-right text-stone-900">Rp {{ number_format($item->subtotal, 0, ',', '.') }}</p>

@@ -162,6 +162,13 @@ new class extends Component {
         </button>
     </header>
 
+    {{-- ===== SUB NAVIGATION ===== --}}
+    <div class="bg-stone-100 border-b border-stone-200 px-4 py-2 flex gap-2">
+        <a href="{{ route('produk') }}" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-700 text-white shadow-xs">Produk</a>
+        <a href="{{ route('kategori') }}" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-600 hover:bg-stone-200 transition-colors">Kategori</a>
+        <a href="{{ route('tambahan') }}" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-stone-600 hover:bg-stone-200 transition-colors">Opsi Tambahan</a>
+    </div>
+
     {{-- ===== SEARCH & FILTER ===== --}}
     <div class="sticky top-[64px] z-10 px-4 py-3 bg-stone-100 border-b border-stone-200">
         <div class="relative mb-3">

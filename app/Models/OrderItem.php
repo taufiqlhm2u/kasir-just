@@ -12,12 +12,16 @@ class OrderItem extends Model
         'product_id',
         'product_name',
         'price',
+        'shots_count',
+        'shot_price',
         'quantity',
         'subtotal',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
+        'shots_count' => 'integer',
+        'shot_price' => 'decimal:2',
         'subtotal' => 'decimal:2',
     ];
 
@@ -29,5 +33,17 @@ class OrderItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Get the formatted display name including shots if present.
+     */
+    public function getFormattedNameAttribute(): string
+    {
+        if ($this->shots_count > 0) {
+            return $this->product_name.' (+'.$this->shots_count.' Shot)';
+        }
+
+        return $this->product_name;
     }
 }

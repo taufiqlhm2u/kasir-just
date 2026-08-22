@@ -4,30 +4,35 @@ use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\Tambahan;
 use Illuminate\Support\Facades\DB;
-use Livewire\Component;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Validate;
+use Livewire\Component;
 use Livewire\WithFileUploads;
 
 new class extends Component {
     use WithFileUploads;
 
     public string $search = '';
+
     public int|null $categoryFilter = null;
 
-    // Cart: array of ['product_id', 'name', 'price', 'cost_price', 'qty', 'subtotal', 'image', 'stock']
+    // Cart: array of ['product_id', 'name', 'price', 'shots_count', 'shot_price', 'qty', 'subtotal', 'image', 'stock']
     public array $cart = [];
 
     // Modals
-    public bool $showCart     = false;
+    public bool $showCart = false;
+
     public bool $showCheckout = false;
-    public bool $showSuccess  = false;
+
+    public bool $showSuccess = false;
 
     // Checkout
-    public string $paymentMethod  = 'cash';
-    public string $paidAmountRaw  = '';
-    public mixed  $paymentProof   = null;
+    public string $paymentMethod = 'cash';
+
+    public string $paidAmountRaw = '';
+
+    public mixed $paymentProof = null;
 
     // Error message
     public string $checkoutError = '';
@@ -51,6 +56,14 @@ new class extends Component {
             ->get();
     }
 
+    #[Computed]
+    public function shotPrice(): float
+    {
+        $shot = Tambahan::where('name', 'like', '%shot%')->first();
+
+        return $shot ? (float) $shot->price : 4000.0;
+    }
+
     public function addToCart(int $productId): void
     {
         $product = Product::find($productId);
@@ -59,24 +72,51 @@ new class extends Component {
             return;
         }
 
-        $existing = collect($this->cart)->search(fn ($item) => $item['product_id'] === $productId);
+        $existing = collect($this->cart)->search(fn ($item) => $item['product_id'] === $productId && ($item['shots_count'] ?? 0) === 0);
 
         if ($existing !== false) {
             if ($this->cart[$existing]['qty'] >= $product->stock) {
                 return;
             }
             $this->cart[$existing]['qty']++;
-            $this->cart[$existing]['subtotal'] = $this->cart[$existing]['qty'] * $this->cart[$existing]['price'];
+            $unitPrice = $this->cart[$existing]['price'] + (($this->cart[$existing]['shots_count'] ?? 0) * ($this->cart[$existing]['shot_price'] ?? $this->shotPrice));
+            $this->cart[$existing]['subtotal'] = $this->cart[$existing]['qty'] * $unitPrice;
         } else {
             $this->cart[] = [
                 'product_id' => $product->id,
-                'name'       => $product->name,
-                'price'      => (float) $product->price,
-                'qty'        => 1,
-                'subtotal'   => (float) $product->price,
-                'image'      => $product->image_url,
-                'stock'      => $product->stock,
+                'name' => $product->name,
+                'price' => (float) $product->price,
+                'shots_count' => 0,
+                'shot_price' => $this->shotPrice,
+                'qty' => 1,
+                'subtotal' => (float) $product->price,
+                'image' => $product->image_url,
+                'stock' => $product->stock,
             ];
+        }
+    }
+
+    public function incrementShot(int $index): void
+    {
+        if (! isset($this->cart[$index])) {
+            return;
+        }
+
+        $this->cart[$index]['shots_count'] = ($this->cart[$index]['shots_count'] ?? 0) + 1;
+        $unitPrice = $this->cart[$index]['price'] + ($this->cart[$index]['shots_count'] * ($this->cart[$index]['shot_price'] ?? $this->shotPrice));
+        $this->cart[$index]['subtotal'] = $this->cart[$index]['qty'] * $unitPrice;
+    }
+
+    public function decrementShot(int $index): void
+    {
+        if (! isset($this->cart[$index])) {
+            return;
+        }
+
+        if (($this->cart[$index]['shots_count'] ?? 0) > 0) {
+            $this->cart[$index]['shots_count']--;
+            $unitPrice = $this->cart[$index]['price'] + ($this->cart[$index]['shots_count'] * ($this->cart[$index]['shot_price'] ?? $this->shotPrice));
+            $this->cart[$index]['subtotal'] = $this->cart[$index]['qty'] * $unitPrice;
         }
     }
 
@@ -90,7 +130,8 @@ new class extends Component {
 
         if ($product && $this->cart[$index]['qty'] < $product->stock) {
             $this->cart[$index]['qty']++;
-            $this->cart[$index]['subtotal'] = $this->cart[$index]['qty'] * $this->cart[$index]['price'];
+            $unitPrice = $this->cart[$index]['price'] + (($this->cart[$index]['shots_count'] ?? 0) * ($this->cart[$index]['shot_price'] ?? $this->shotPrice));
+            $this->cart[$index]['subtotal'] = $this->cart[$index]['qty'] * $unitPrice;
         }
     }
 
@@ -102,7 +143,8 @@ new class extends Component {
 
         if ($this->cart[$index]['qty'] > 1) {
             $this->cart[$index]['qty']--;
-            $this->cart[$index]['subtotal'] = $this->cart[$index]['qty'] * $this->cart[$index]['price'];
+            $unitPrice = $this->cart[$index]['price'] + (($this->cart[$index]['shots_count'] ?? 0) * ($this->cart[$index]['shot_price'] ?? $this->shotPrice));
+            $this->cart[$index]['subtotal'] = $this->cart[$index]['qty'] * $unitPrice;
         } else {
             $this->removeFromCart($index);
         }
@@ -137,7 +179,7 @@ new class extends Component {
     public function updatedPaymentMethod(): void
     {
         // Reset proof and paid amount when switching payment method
-        $this->paymentProof  = null;
+        $this->paymentProof = null;
         $this->paidAmountRaw = '';
         $this->checkoutError = '';
     }
@@ -153,12 +195,14 @@ new class extends Component {
         // Validate cash: paid amount must be sufficient
         if ($this->paymentMethod === 'cash' && $this->paid_amount < $this->cartTotal) {
             $this->checkoutError = 'Nominal bayar kurang dari total tagihan.';
+
             return;
         }
 
         // Validate QRIS: payment proof photo is required
         if ($this->paymentMethod === 'qris' && ! $this->paymentProof) {
             $this->checkoutError = 'Bukti pembayaran QRIS wajib diunggah.';
+
             return;
         }
 
@@ -169,28 +213,30 @@ new class extends Component {
         }
 
         DB::transaction(function () use ($proofPath) {
-            $totalAmount  = $this->cartTotal;
-            $paidAmount   = $this->paymentMethod === 'cash' ? $this->paid_amount : $totalAmount;
+            $totalAmount = $this->cartTotal;
+            $paidAmount = $this->paymentMethod === 'cash' ? $this->paid_amount : $totalAmount;
             $changeAmount = $this->paymentMethod === 'cash' ? max(0, $paidAmount - $totalAmount) : 0;
-            $invoiceNo    = 'INV-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -5));
+            $invoiceNo = 'INV-'.date('Ymd').'-'.strtoupper(substr(uniqid(), -5));
 
             $order = Order::create([
-                'invoice_no'     => $invoiceNo,
-                'total_amount'   => $totalAmount,
-                'paid_amount'    => $paidAmount,
-                'change_amount'  => $changeAmount,
+                'invoice_no' => $invoiceNo,
+                'total_amount' => $totalAmount,
+                'paid_amount' => $paidAmount,
+                'change_amount' => $changeAmount,
                 'payment_method' => $this->paymentMethod,
-                'payment_proof'  => $proofPath,
+                'payment_proof' => $proofPath,
             ]);
 
             foreach ($this->cart as $item) {
                 OrderItem::create([
-                    'order_id'     => $order->id,
-                    'product_id'   => $item['product_id'],
+                    'order_id' => $order->id,
+                    'product_id' => $item['product_id'],
                     'product_name' => $item['name'],
-                    'price'        => $item['price'],
-                    'quantity'     => $item['qty'],
-                    'subtotal'     => $item['subtotal'],
+                    'price' => $item['price'],
+                    'shots_count' => $item['shots_count'] ?? 0,
+                    'shot_price' => $item['shot_price'] ?? $this->shotPrice,
+                    'quantity' => $item['qty'],
+                    'subtotal' => $item['subtotal'],
                 ]);
 
                 Product::where('id', $item['product_id'])
@@ -198,40 +244,40 @@ new class extends Component {
             }
 
             $this->lastOrder = [
-                'invoice_no'     => $order->invoice_no,
-                'items'          => $this->cart,
-                'total_amount'   => $totalAmount,
-                'paid_amount'    => $paidAmount,
-                'change_amount'  => $changeAmount,
+                'invoice_no' => $order->invoice_no,
+                'items' => $this->cart,
+                'total_amount' => $totalAmount,
+                'paid_amount' => $paidAmount,
+                'change_amount' => $changeAmount,
                 'payment_method' => $this->paymentMethod,
-                'payment_proof'  => $proofPath ? asset('storage/' . $proofPath) : null,
-                'created_at'     => now()->format('d M Y, H:i'),
+                'payment_proof' => $proofPath ? asset('storage/'.$proofPath) : null,
+                'created_at' => now()->format('d M Y, H:i'),
             ];
         });
 
         // Reset state
-        $this->cart          = [];
+        $this->cart = [];
         $this->paidAmountRaw = '';
-        $this->paymentProof  = null;
-        $this->showCheckout  = false;
-        $this->showCart      = false;
-        $this->showSuccess   = true;
+        $this->paymentProof = null;
+        $this->showCheckout = false;
+        $this->showCart = false;
+        $this->showSuccess = true;
 
         unset($this->products);
     }
 
     public function resetPos(): void
     {
-        $this->cart          = [];
+        $this->cart = [];
         $this->paidAmountRaw = '';
         $this->paymentMethod = 'cash';
-        $this->paymentProof  = null;
+        $this->paymentProof = null;
         $this->checkoutError = '';
-        $this->showSuccess   = false;
-        $this->showCheckout  = false;
-        $this->showCart      = false;
-        $this->lastOrder     = [];
-        $this->search        = '';
+        $this->showSuccess = false;
+        $this->showCheckout = false;
+        $this->showCart = false;
+        $this->lastOrder = [];
+        $this->search = '';
         $this->categoryFilter = null;
 
         unset($this->products);
@@ -340,23 +386,53 @@ new class extends Component {
 
             <div class="flex flex-col gap-3 mb-4 max-h-[50dvh] overflow-y-auto">
                 @foreach($cart as $index => $item)
-                <div wire:key="cart-item-{{ $index }}" class="flex items-center gap-3 p-3 rounded-xl bg-stone-100 border border-stone-200">
-                    <img src="{{ $item['image'] }}" alt="{{ $item['name'] }}"
-                         class="w-12 h-12 rounded-lg object-cover shrink-0"
-                         onerror="this.src='https://placehold.co/48x48/f5f5f4/78716c?text=?'">
-                    <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-sm truncate text-stone-900">{{ $item['name'] }}</p>
-                        <p class="text-xs text-amber-700 font-medium">Rp {{ number_format($item['price'], 0, ',', '.') }}</p>
-                    </div>
-                    <div class="flex items-center gap-2 shrink-0">
-                        <div class="flex items-center bg-stone-100 rounded-lg overflow-hidden border border-stone-200">
-                            <button wire:click="decrementQty({{ $index }})" class="w-9 h-9 flex items-center justify-center bg-transparent border-0 cursor-pointer text-lg font-bold text-amber-700 hover:bg-amber-100/50 active:bg-amber-100 transition-colors" id="cart-dec-{{ $index }}">−</button>
-                            <span class="min-w-[32px] text-center font-bold text-sm text-stone-800">{{ $item['qty'] }}</span>
-                            <button wire:click="incrementQty({{ $index }})" class="w-9 h-9 flex items-center justify-center bg-transparent border-0 cursor-pointer text-lg font-bold text-amber-700 hover:bg-amber-100/50 active:bg-amber-100 transition-colors" id="cart-inc-{{ $index }}">+</button>
+                <div wire:key="cart-item-{{ $index }}" class="p-3 rounded-xl bg-stone-100 border border-stone-200">
+                    <div class="flex items-center gap-3">
+                        <img src="{{ $item['image'] }}" alt="{{ $item['name'] }}"
+                             class="w-12 h-12 rounded-lg object-cover shrink-0"
+                             onerror="this.src='https://placehold.co/48x48/f5f5f4/78716c?text=?'">
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-sm truncate text-stone-900">{{ $item['name'] }}</p>
+                            <p class="text-xs text-amber-700 font-medium">
+                                Rp {{ number_format($item['price'], 0, ',', '.') }}
+                                @if(($item['shots_count'] ?? 0) > 0)
+                                    <span class="text-stone-500 font-normal">+ {{ $item['shots_count'] }} Shot (@ Rp {{ number_format($item['shot_price'], 0, ',', '.') }})</span>
+                                @endif
+                            </p>
                         </div>
-                        <button wire:click="removeFromCart({{ $index }})" class="inline-flex items-center justify-center min-w-[32px] min-h-[32px] p-1.5 rounded-lg font-semibold text-xs border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 transition-all select-none active:scale-95" id="cart-del-{{ $index }}">
-                            <span class="material-symbols-outlined text-base">delete</span>
-                        </button>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <div class="flex items-center bg-white rounded-lg overflow-hidden border border-stone-200">
+                                <button wire:click="decrementQty({{ $index }})" class="w-9 h-9 flex items-center justify-center bg-transparent border-0 cursor-pointer text-lg font-bold text-amber-700 hover:bg-amber-100/50 active:bg-amber-100 transition-colors" id="cart-dec-{{ $index }}">−</button>
+                                <span class="min-w-[32px] text-center font-bold text-sm text-stone-800">{{ $item['qty'] }}</span>
+                                <button wire:click="incrementQty({{ $index }})" class="w-9 h-9 flex items-center justify-center bg-transparent border-0 cursor-pointer text-lg font-bold text-amber-700 hover:bg-amber-100/50 active:bg-amber-100 transition-colors" id="cart-inc-{{ $index }}">+</button>
+                            </div>
+                            <button wire:click="removeFromCart({{ $index }})" class="inline-flex items-center justify-center min-w-[32px] min-h-[32px] p-1.5 rounded-lg font-semibold text-xs border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 transition-all select-none active:scale-95" id="cart-del-{{ $index }}">
+                                <span class="material-symbols-outlined text-base">delete</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Shot Controller --}}
+                    <div class="mt-2.5 pt-2 border-t border-stone-200/80 flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-1.5 text-stone-600">
+                            <span class="material-symbols-outlined text-base text-amber-700">local_cafe</span>
+                            <span class="font-medium">Extra Shot:</span>
+                            @if(($item['shots_count'] ?? 0) > 0)
+                                <span class="font-bold text-amber-800 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-full text-[11px]">+{{ $item['shots_count'] }} Shot (+Rp {{ number_format($item['shots_count'] * ($item['shot_price'] ?? $this->shotPrice), 0, ',', '.') }})</span>
+                            @else
+                                <span class="text-stone-400 font-normal">Tanpa Shot</span>
+                            @endif
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button wire:click="decrementShot({{ $index }})"
+                                    class="w-7 h-7 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 font-bold flex items-center justify-center text-sm active:scale-95 transition-all shadow-2xs {{ ($item['shots_count'] ?? 0) <= 0 ? 'opacity-40 cursor-not-allowed' : '' }}"
+                                    id="shot-dec-{{ $index }}"
+                                    {{ ($item['shots_count'] ?? 0) <= 0 ? 'disabled' : '' }}>−</button>
+                            <span class="min-w-[24px] text-center font-bold text-xs text-amber-900">{{ $item['shots_count'] ?? 0 }}</span>
+                            <button wire:click="incrementShot({{ $index }})"
+                                    class="w-7 h-7 rounded-lg bg-amber-700 hover:bg-amber-800 text-white font-bold flex items-center justify-center text-sm active:scale-95 transition-all shadow-2xs"
+                                    id="shot-inc-{{ $index }}">+</button>
+                        </div>
                     </div>
                 </div>
                 @endforeach
@@ -615,10 +691,17 @@ new class extends Component {
                 <hr class="border-0 border-t border-dashed border-stone-300 my-3">
 
                 @foreach($lastOrder['items'] as $item)
-                <div class="flex justify-between text-sm py-1">
+                <div class="flex justify-between text-sm py-1 border-b border-stone-200/60 last:border-b-0">
                     <div>
-                        <p class="font-medium text-stone-900">{{ $item['name'] }}</p>
-                        <p class="text-stone-500 text-xs">{{ $item['qty'] }} × Rp {{ number_format($item['price'], 0, ',', '.') }}</p>
+                        <p class="font-medium text-stone-900">
+                            {{ $item['name'] }}
+                            @if(($item['shots_count'] ?? 0) > 0)
+                                <span class="text-amber-800 font-semibold text-xs">(+{{ $item['shots_count'] }} Shot)</span>
+                            @endif
+                        </p>
+                        <p class="text-stone-500 text-xs">
+                            {{ $item['qty'] }} × Rp {{ number_format($item['price'] + (($item['shots_count'] ?? 0) * ($item['shot_price'] ?? 4000)), 0, ',', '.') }}
+                        </p>
                     </div>
                     <p class="font-semibold text-stone-900">Rp {{ number_format($item['subtotal'], 0, ',', '.') }}</p>
                 </div>

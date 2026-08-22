@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\Tambahan;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -21,7 +22,13 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 2. Categories
+        // 2. Tambahan (Options / Additions)
+        Tambahan::updateOrCreate(
+            ['name' => 'Shot'],
+            ['price' => 4000]
+        );
+
+        // 3. Categories
         $categoriesData = [
             ['name' => 'Coffee Based', 'slug' => 'coffee-based'],
             ['name' => 'Milk Based', 'slug' => 'milk-based'],
@@ -36,7 +43,7 @@ class DatabaseSeeder extends Seeder
         $milk = Category::where('slug', 'milk-based')->first();
         $other = Category::where('slug', 'lainnya')->first();
 
-        // 3. Products (Using local images from storage/app/public/produk)
+        // 4. Products (Using local images from storage/app/public/produk)
         $productsData = [
             // Coffee Based
             [

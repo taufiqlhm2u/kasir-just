@@ -24,6 +24,10 @@ Route::middleware('auth')->group(function () {
         return view('livewire.master.kategori');
     })->name('kategori');
 
+    Route::get('/tambahan', function () {
+        return view('livewire.master.tambahan');
+    })->name('tambahan');
+
     Route::get('/laporan', function () {
         return view('livewire.report.penjualan');
     })->name('laporan');

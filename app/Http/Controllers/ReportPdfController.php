@@ -25,6 +25,7 @@ class ReportPdfController extends Controller
         $totalOmset = (float) $orders->sum('total_amount');
         $totalTransaksi = $orders->count();
         $totalCups = (int) $orders->sum(fn ($order) => $order->items->sum('quantity'));
+        $totalShots = (int) $orders->sum(fn ($order) => $order->items->sum('shots_count'));
         $totalCash = (float) $orders->where('payment_method', 'cash')->sum('total_amount');
         $totalQris = (float) $orders->where('payment_method', 'qris')->sum('total_amount');
 
@@ -36,6 +37,7 @@ class ReportPdfController extends Controller
             'totalOmset' => $totalOmset,
             'totalTransaksi' => $totalTransaksi,
             'totalCups' => $totalCups,
+            'totalShots' => $totalShots,
             'totalCash' => $totalCash,
             'totalQris' => $totalQris,
             'printedAt' => now()->isoFormat('D MMMM Y, HH:mm'),
